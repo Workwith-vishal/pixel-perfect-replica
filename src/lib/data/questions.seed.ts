@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 import type { Difficulty } from "./types";
 
 export interface RawQuestion {

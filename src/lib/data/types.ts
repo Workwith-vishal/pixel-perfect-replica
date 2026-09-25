@@ -72,6 +72,7 @@ export interface StudentQuestion {
   id: string;
   questionText: string;
   options: string[];
+  optionIds?: string[];
   marks: number;
   negativeMarks: number;
   topic: string;
@@ -92,6 +93,9 @@ export interface Assessment {
   navigationMode: NavigationMode;
   security: SecuritySettings;
   questionIds: string[];
+  startsAt?: string;
+  endsAt?: string;
+  eligiblePrograms?: string[];
   createdAt: string;
   updatedAt: string;
 }
