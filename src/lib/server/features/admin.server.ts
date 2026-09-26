@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin } from "../auth";
 import { advisoryText, expireAttempts, getDatabase } from "../repository";
