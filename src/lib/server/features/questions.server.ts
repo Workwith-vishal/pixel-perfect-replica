@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin } from "../auth";
 import { secureToken } from "../crypto.server";
@@ -191,14 +189,6 @@ export const importQuestions = createServerFn({ method: "POST" })
 
 export const importQuestionCsv = importQuestions;
 
-export const questionExists = async (id: string): Promise<boolean> => {
-  const database = await getDatabase();
-  return findQuestion(database, id) !== undefined;
-};
-
 export type CreateQuestionInput = QuestionInput;
 export type UpdateQuestionPatch = QuestionPatchInput;
 type QuestionPatchInput = import("../contracts").QuestionPatch;
-
-export const assertQuestionInput = (data: unknown): QuestionInput =>
-  questionInputSchema.parse(data);
