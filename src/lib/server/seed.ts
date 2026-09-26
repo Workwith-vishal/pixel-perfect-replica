@@ -165,6 +165,8 @@ function eventSeverity(eventType: IntegrityEventType): Severity {
   if (eventType === "FULLSCREEN_EXIT" || eventType === "CAMERA_STREAM_INTERRUPTED") return "High";
   if (eventType === "MULTIPLE_FULLSCREEN_EXITS" || eventType === "WINDOW_BLUR") return "Medium";
   if (eventType === "TAB_SWITCH" || eventType === "CAMERA_DISABLED") return "Medium";
+  if (eventType === "MULTIPLE_FACES" || eventType === "FACE_TOO_CLOSE") return "High";
+  if (eventType === "FACE_ABSENT" || eventType === "LOOKING_AWAY") return "Medium";
   return "Low";
 }
 
