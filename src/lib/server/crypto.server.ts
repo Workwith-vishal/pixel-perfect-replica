@@ -108,4 +108,3 @@ export async function verifyPassword(password: string, encoded: string): Promise
   const actual = await derivePassword(password, salt, iterations);
   return constantTimeEqual(actual, base64UrlToBytes(expected));
 }
-
