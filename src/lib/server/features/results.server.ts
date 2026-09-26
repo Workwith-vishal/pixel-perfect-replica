@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin } from "../auth";
 import {
@@ -48,7 +46,7 @@ export const getResultDetail = createServerFn({ method: "GET" })
     await requireAdmin();
     const database = await getDatabase();
     const attempt = findAttempt(database, data.attemptId);
-    if (!attempt) throw new ApiError("NOT_FOUND", "Attempt not found", 404);
+    if (!attempt) return null;
     expireAttemptIfNeeded(database, attempt);
     assertCondition(
       attempt.status !== "in_progress",
