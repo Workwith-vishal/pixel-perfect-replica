@@ -1,3 +1,8 @@
+# Environment (never commit real keys — copy .env.example to .env)
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log
