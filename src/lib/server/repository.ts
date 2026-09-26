@@ -13,7 +13,7 @@ import type {
   Severity,
   User,
 } from "../data/types";
-import { secureShuffle, secureToken } from "./crypto.server";
+import { hashPassword, secureShuffle, secureToken } from "./crypto.server";
 import { ApiError, assertCondition } from "./errors";
 import type {
   AttemptRecord,
@@ -50,6 +50,41 @@ export function findUserByEmail(database: ServerDatabase, email: string): Server
 
 export function findUserById(database: ServerDatabase, id: string): ServerUser | undefined {
   return database.users.find((user) => user.id === id);
+}
+
+/**
+ * Enrol a new student.
+ *
+ * The password is hashed here rather than at the call site so that every path
+ * into the user table goes through PBKDF2 — there is no way for a future
+ * caller to accidentally persist a plaintext credential.
+ */
+export async function createStudentUser(
+  database: ServerDatabase,
+  input: { name: string; email: string; password: string; program: string },
+  now = new Date(),
+): Promise<ServerUser> {
+  const email = input.email.trim().toLowerCase();
+  assertCondition(
+    !findUserByEmail(database, email),
+    "EMAIL_TAKEN",
+    "A user with that email already exists",
+    409,
+  );
+  const program = database.programs.find((entry) => entry.name === input.program);
+  assertCondition(program, "UNKNOWN_PROGRAM", "Choose one of the available programmes", 400);
+
+  const user: ServerUser = {
+    id: `stud_${secureToken(9)}`,
+    name: input.name.trim(),
+    email,
+    role: "STUDENT",
+    program: program.name,
+    passwordHash: await hashPassword(input.password),
+    createdAt: now.toISOString(),
+  };
+  database.users.push(user);
+  return user;
 }
 
 export function findQuestion(database: ServerDatabase, id: string): Question | undefined {
@@ -226,6 +261,8 @@ export function deriveSeverity(eventType: IntegrityEventType): Severity {
   if (eventType === "FULLSCREEN_EXIT" || eventType === "CAMERA_STREAM_INTERRUPTED") return "High";
   if (eventType === "WINDOW_BLUR" || eventType === "TAB_SWITCH") return "Medium";
   if (eventType === "CAMERA_DISABLED" || eventType === "MICROPHONE_DISABLED") return "Medium";
+  if (eventType === "MULTIPLE_FACES" || eventType === "FACE_TOO_CLOSE") return "High";
+  if (eventType === "FACE_ABSENT" || eventType === "LOOKING_AWAY") return "Medium";
   return "Low";
 }
 
@@ -321,7 +358,9 @@ export function gradeAndFinalize(
   );
   const deadlineElapsed = Math.max(
     0,
-    Math.floor((new Date(attempt.deadlineAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000),
+    Math.floor(
+      (new Date(attempt.deadlineAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000,
+    ),
   );
   const timeCap = assessment
     ? Math.min(assessment.duration * 60, deadlineElapsed)
