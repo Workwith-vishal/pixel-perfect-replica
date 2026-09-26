@@ -1,10 +1,14 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin, requireStudent, requireUser } from "../auth";
-import { studentIdInputSchema } from "../contracts";
+import { createStudentSchema, studentIdInputSchema } from "../contracts";
 import { ApiError } from "../errors";
-import { findAssessment, findUserById, getDatabase, isEligibleForAssessment } from "../repository";
+import {
+  createStudentUser,
+  findAssessment,
+  findUserById,
+  getDatabase,
+  isEligibleForAssessment,
+} from "../repository";
 import {
   toProgramDto,
   toStudentAssessment,
@@ -18,6 +22,19 @@ export const listPrograms = createServerFn({ method: "GET" }).handler(async () =
   const database = await getDatabase();
   return database.programs.map(toProgramDto);
 });
+
+/**
+ * Enrol a student. Returns the student row so the caller can insert it into
+ * the list cache without a refetch.
+ */
+export const createStudent = createServerFn({ method: "POST" })
+  .validator(createStudentSchema)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const database = await getDatabase();
+    const user = await createStudentUser(database, data);
+    return toStudentRow(database, user);
+  });
 
 export const listStudents = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
@@ -33,7 +50,7 @@ export const getStudent = createServerFn({ method: "GET" })
     await requireAdmin();
     const database = await getDatabase();
     const user = findUserById(database, data.studentId);
-    if (!user || user.role !== "STUDENT") throw new ApiError("NOT_FOUND", "Student not found", 404);
+    if (!user || user.role !== "STUDENT") return null;
     return toStudentDetail(database, user, true);
   });
 
