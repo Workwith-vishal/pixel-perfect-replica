@@ -42,6 +42,11 @@ export const integrityEventTypeSchema = z.enum([
   "CAMERA_STREAM_INTERRUPTED",
   "MULTIPLE_FULLSCREEN_EXITS",
   "NETWORK_INTERRUPTION",
+  "FACE_ABSENT",
+  "MULTIPLE_FACES",
+  "LOOKING_AWAY",
+  "FACE_TOO_CLOSE",
+  "ATTENTION_WARNING",
 ]);
 export const severitySchema = z.enum(["Low", "Medium", "High"]);
 export const idSchema = z.string().trim().min(1).max(160);
@@ -192,6 +197,28 @@ export const loginInputSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+/**
+ * Passwords for new accounts must be long enough to be worth having and mix
+ * character classes. Login deliberately stays permissive so that tightening
+ * this policy later can never lock an existing account out.
+ */
+export const newPasswordSchema = z
+  .string()
+  .min(8, "Use at least 8 characters")
+  .max(200)
+  .regex(/[A-Za-z]/, "Include at least one letter")
+  .regex(/[0-9]/, "Include at least one number");
+
+export const createStudentSchema = z.object({
+  name: z.string().trim().min(2, "Enter the student's full name").max(120),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(320),
+  password: newPasswordSchema,
+  /** Programme name; must match one of the seeded programmes. */
+  program: z.string().trim().min(1, "Choose a programme").max(120),
+});
+
+export type CreateStudentInput = z.infer<typeof createStudentSchema>;
+
 export const questionIdInputSchema = z.object({ questionId: idSchema });
 export const csvInputSchema = z.object({
   csv: z.string().min(1).max(2_000_000),
@@ -271,6 +298,32 @@ export const releaseResultInputSchema = z.object({
   attemptId: idSchema,
 });
 
+/** Why an artifact exists: a triggered integrity event, or a scheduled frame. */
+export const proctoringReasonSchema = z.union([
+  integrityEventTypeSchema,
+  z.literal("interval"),
+  z.literal("manual"),
+]);
+
+export const proctoringArtifactInputSchema = z.object({
+  attemptId: idSchema,
+  assessmentId: idSchema.nullable().optional(),
+  kind: z.enum(["snapshot", "clip"]),
+  reason: proctoringReasonSchema.nullable().optional(),
+  mimeType: z.enum(["image/jpeg", "video/webm"]),
+  capturedAt: isoDateSchema,
+  faceCount: z.number().int().min(0).max(20).nullable().optional(),
+  attentionScore: z.number().min(0).max(1).nullable().optional(),
+  metadata: metadataSchema.optional(),
+  /** Base64 payload, without a data: prefix. */
+  data: z.string().min(4).max(14_000_000),
+});
+
+export const proctoringAttemptInputSchema = z.object({
+  attemptId: idSchema,
+  limit: z.number().int().min(1).max(200).default(60),
+});
+
 export const settingsPatchSchema = z
   .object({
     organisation: z.string().trim().min(1).max(160).optional(),
@@ -295,6 +348,9 @@ export type SubmitInput = z.infer<typeof submitInputSchema>;
 export type ResultListInput = z.infer<typeof resultListInputSchema>;
 export type ReviewIntegrityInput = z.infer<typeof reviewIntegrityInputSchema>;
 export type ReleaseResultInput = z.infer<typeof releaseResultInputSchema>;
+export type ProctoringReason = z.infer<typeof proctoringReasonSchema>;
+export type ProctoringArtifactInput = z.infer<typeof proctoringArtifactInputSchema>;
+export type ProctoringAttemptInput = z.infer<typeof proctoringAttemptInputSchema>;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 export type CsvImportInput = z.infer<typeof csvImportInputSchema>;
 export type ServerRole = z.infer<typeof roleSchema>;
