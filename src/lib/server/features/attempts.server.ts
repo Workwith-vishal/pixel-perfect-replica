@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireStudent } from "../auth";
 import {
