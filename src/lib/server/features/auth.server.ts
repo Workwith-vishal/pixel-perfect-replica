@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import {
   clearSessionStore,
@@ -57,7 +55,3 @@ export const resetDemoData = createServerFn({ method: "POST" }).handler(async ()
 });
 
 export const authMe = getSession;
-
-export function sessionViewer(user: Awaited<ReturnType<typeof currentUser>>) {
-  return user ? viewer(user) : null;
-}
