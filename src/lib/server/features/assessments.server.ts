@@ -1,5 +1,3 @@
-import "@tanstack/react-start/server-only";
-
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin, requireStudent } from "../auth";
 import { secureToken } from "../crypto.server";
@@ -84,7 +82,7 @@ export const listAssessments = createServerFn({ method: "GET" })
         return true;
       })
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-.map((assessment) => toAssessmentAdmin(database, assessment));
+      .map((assessment) => toAssessmentAdmin(database, assessment));
   });
 
 export const getAssessment = createServerFn({ method: "GET" })
@@ -189,9 +187,8 @@ export const getAssessmentInstructions = createServerFn({ method: "GET" })
     const { user } = await requireStudent();
     const database = await getDatabase();
     const assessment = findAssessment(database, data.assessmentId);
-    if (!assessment) throw new ApiError("NOT_FOUND", "Assessment not found", 404);
-    if (!isEligibleForAssessment(user, assessment))
-      throw new ApiError("FORBIDDEN", "Assessment is not available for your programme", 403);
+    if (!assessment) return null;
+    if (!isEligibleForAssessment(user, assessment)) return null;
     return toAssessmentInstructions(user, assessment);
   });
 
@@ -229,9 +226,4 @@ export const listStudentAssessments = createServerFn({ method: "GET" }).handler(
     .map((assessment) => toStudentAssessment(database, user, assessment));
 });
 
-export const createAssessmentInput = assessmentInputSchema;
-export const assessmentExists = async (id: string): Promise<boolean> => {
-  const database = await getDatabase();
-  return findAssessment(database, id) !== undefined;
-};
 export type NewAssessmentInput = AssessmentInput;
