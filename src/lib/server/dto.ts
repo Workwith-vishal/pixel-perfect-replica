@@ -313,3 +313,30 @@ export interface AttemptOrderAdminDto extends AttemptQuestionSlot {
 }
 
 export type SettingsDto = PlatformSettings;
+
+export type ProctoringArtifactKind = "snapshot" | "clip";
+
+export type ProctoringFailureCode =
+  "not_configured" | "missing_table" | "upload_failed" | "read_failed";
+
+export interface ProctoringStorageFailureDto {
+  code: ProctoringFailureCode;
+  message: string;
+  hint?: string;
+}
+
+/** One stored frame or clip, with a short-lived signed URL for private review. */
+export interface ProctoringArtifactDto {
+  id: string;
+  attemptId: string;
+  studentId: string;
+  assessmentId: string | null;
+  kind: ProctoringArtifactKind;
+  reason: string | null;
+  mimeType: string;
+  byteSize: number;
+  capturedAt: string;
+  faceCount: number | null;
+  attentionScore: number | null;
+  url: string | null;
+}
