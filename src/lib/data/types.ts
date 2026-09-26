@@ -72,6 +72,7 @@ export interface StudentQuestion {
   id: string;
   questionText: string;
   options: string[];
+  optionIds?: string[];
   marks: number;
   negativeMarks: number;
   topic: string;
@@ -92,6 +93,9 @@ export interface Assessment {
   navigationMode: NavigationMode;
   security: SecuritySettings;
   questionIds: string[];
+  startsAt?: string;
+  endsAt?: string;
+  eligiblePrograms?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -142,7 +146,12 @@ export type IntegrityEventType =
   | "MICROPHONE_DISABLED"
   | "CAMERA_STREAM_INTERRUPTED"
   | "MULTIPLE_FULLSCREEN_EXITS"
-  | "NETWORK_INTERRUPTION";
+  | "NETWORK_INTERRUPTION"
+  | "FACE_ABSENT"
+  | "MULTIPLE_FACES"
+  | "LOOKING_AWAY"
+  | "FACE_TOO_CLOSE"
+  | "ATTENTION_WARNING";
 
 export type Severity = "Low" | "Medium" | "High";
 

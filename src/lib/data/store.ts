@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 /**
  * Mock backend for the CareerVeda Assessment Center prototype.
  *
@@ -70,7 +72,11 @@ function shuffled<T>(arr: T[], rnd: () => number): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    const current = copy[i];
+    const swap = copy[j];
+    if (current === undefined || swap === undefined) continue;
+    copy[i] = swap;
+    copy[j] = current;
   }
   return copy;
 }
@@ -169,7 +175,7 @@ function buildSeed(): DB {
     ...STUDENT_NAMES.map((name, i) => ({
       id: `stu_${i + 1}`,
       name,
-      email: `${name.split(" ")[0].toLowerCase()}.${name.split(" ")[1].toLowerCase()}@careerveda.in`,
+      email: `${name.split(" ")[0]?.toLowerCase() ?? ""}.${name.split(" ")[1]?.toLowerCase() ?? ""}@careerveda.in`,
       role: "STUDENT" as const,
       program:
         i % 5 === 4 ? "Data Analytics" : i % 3 === 2 ? "Business Analytics" : "Product Management",
@@ -297,8 +303,24 @@ function buildSeed(): DB {
       25,
       "Mixed",
     ],
-    ["Business Metrics Diagnostic", "Business Analytics", "Business Metrics & KPIs", "Live", 12, 15, "Medium"],
-    ["SQL & Analysis Readiness", "Data Analytics", "SQL for Analytics", "Archived", 12, 15, "Medium"],
+    [
+      "Business Metrics Diagnostic",
+      "Business Analytics",
+      "Business Metrics & KPIs",
+      "Live",
+      12,
+      15,
+      "Medium",
+    ],
+    [
+      "SQL & Analysis Readiness",
+      "Data Analytics",
+      "SQL for Analytics",
+      "Archived",
+      12,
+      15,
+      "Medium",
+    ],
   ];
 
   const assessments: Assessment[] = specs.map((s, i) => {
@@ -346,14 +368,16 @@ function buildSeed(): DB {
       ["NETWORK_INTERRUPTION", "Low"],
     ];
     for (let i = 0; i < count; i++) {
-      const [eventType, severity] = types[Math.floor(rnd() * types.length)];
+      const event = types[Math.floor(rnd() * types.length)];
+      if (!event) continue;
+      const [eventType, severity] = event;
       const ts = new Date(new Date(startedAt).getTime() + (2 + i * 3) * 60000).toISOString();
       events.push({
         id: uid("evt"),
         attemptId,
         eventType,
         timestamp: ts,
-        durationSec: eventType === "WINDOW_BLUR" ? 3 + Math.floor(rnd() * 20) : undefined,
+        ...(eventType === "WINDOW_BLUR" ? { durationSec: 3 + Math.floor(rnd() * 20) } : {}),
         severity,
       });
     }
@@ -364,6 +388,7 @@ function buildSeed(): DB {
   for (let i = 0; i < 20; i++) {
     const a = completedPool[i % completedPool.length];
     const student = students[(i + 1) % students.length];
+    if (!a || !student) continue;
     const startedAt = daysAgo(1 + (i % 14), 9 + (i % 7), 5 + (i % 40));
     const order = makeOrder(a);
     const answers = order.map((slot) => {
@@ -377,7 +402,7 @@ function buildSeed(): DB {
             ? null
             : correct
               ? q.correctOption
-              : wrongOptions[Math.floor(rnd() * wrongOptions.length)],
+              : (wrongOptions[Math.floor(rnd() * wrongOptions.length)] ?? null),
         answeredAt: startedAt,
       };
     });
@@ -426,6 +451,7 @@ function buildSeed(): DB {
   for (let i = 0; i < 5; i++) {
     const a = livePool[i % livePool.length];
     const student = students[(i + 3) % students.length];
+    if (!a || !student) continue;
     const minutesIn = 4 + i * 3;
     const startedAt = new Date(Date.now() - minutesIn * 60000).toISOString();
     const order = makeOrder(a);
@@ -538,7 +564,12 @@ export const api = {
   },
 
   async listStudents(): Promise<
-    (User & { attempts: number; completed: number; flagged: number; avgPercentage: number | null })[]
+    (User & {
+      attempts: number;
+      completed: number;
+      flagged: number;
+      avgPercentage: number | null;
+    })[]
   > {
     const d = getDB();
     const rows = d.users
@@ -610,7 +641,9 @@ export const api = {
     const d = getDB();
     const idx = d.questions.findIndex((q) => q.id === id);
     if (idx < 0) return delay(undefined);
-    d.questions[idx] = { ...d.questions[idx], ...patch };
+    const current = d.questions[idx];
+    if (!current) return delay(undefined);
+    d.questions[idx] = { ...current, ...patch };
     persist();
     return delay(d.questions[idx]);
   },
@@ -710,7 +743,9 @@ export const api = {
     const d = getDB();
     const idx = d.assessments.findIndex((a) => a.id === id);
     if (idx < 0) return delay(undefined);
-    d.assessments[idx] = { ...d.assessments[idx], ...patch, updatedAt: new Date().toISOString() };
+    const current = d.assessments[idx];
+    if (!current) return delay(undefined);
+    d.assessments[idx] = { ...current, ...patch, updatedAt: new Date().toISOString() };
     persist();
     return delay(d.assessments[idx]);
   },
@@ -748,7 +783,8 @@ export const api = {
     submitted.forEach((a) => {
       const p = a.percentage ?? 0;
       const i = p <= 20 ? 0 : p <= 40 ? 1 : p <= 60 ? 2 : p <= 80 ? 3 : 4;
-      distribution[i].count += 1;
+      const bucket = distribution[i];
+      if (bucket) bucket.count += 1;
     });
 
     const byAssessment = d.assessments
@@ -765,7 +801,8 @@ export const api = {
             : 0,
           completionRate: rows.length
             ? Math.round(
-                (rows.filter((x) => x.status !== "expired").length / Math.max(rows.length, 1)) * 100,
+                (rows.filter((x) => x.status !== "expired").length / Math.max(rows.length, 1)) *
+                  100,
               )
             : 0,
         };
@@ -962,7 +999,8 @@ export const api = {
         a.assessmentId === assessmentId && a.studentId === studentId && a.status === "in_progress",
     );
     const used = d.attempts.filter(
-      (a) => a.assessmentId === assessmentId && a.studentId === studentId && a.status !== "in_progress",
+      (a) =>
+        a.assessmentId === assessmentId && a.studentId === studentId && a.status !== "in_progress",
     ).length;
     if (!existing && used >= assessment.maxAttempts) {
       return delay({ error: "ATTEMPT_LIMIT" as const });
@@ -1027,7 +1065,7 @@ export const api = {
       return {
         id: q.id,
         questionText: q.questionText,
-        options: slot.optionOrder.map((origIdx) => q.options[origIdx]),
+        options: slot.optionOrder.map((origIdx) => q.options[origIdx]!),
         marks: q.marks,
         negativeMarks: q.negativeMarks,
         topic: q.topic,
@@ -1069,6 +1107,7 @@ export const api = {
     const slot = attempt.questionOrder.find((s) => s.questionId === questionId);
     if (!slot) return delay({ ok: false });
     const original = displayedOption === null ? null : slot.optionOrder[displayedOption];
+    if (original === undefined) return delay({ ok: false });
     const existing = attempt.answers.find((a) => a.questionId === questionId);
     if (existing) {
       existing.selectedOption = original;
@@ -1128,15 +1167,16 @@ export const api = {
       eventType: input.eventType,
       timestamp: new Date().toISOString(),
       severity: input.severity,
-      durationSec: input.durationSec,
-      metadata: input.metadata,
+      ...(input.durationSec === undefined ? {} : { durationSec: input.durationSec }),
+      ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     };
     d.events.push(event);
     if (attempt) {
       const assessment = d.assessments.find((a) => a.id === attempt.assessmentId);
       const count = d.events.filter((e) => e.attemptId === attempt.id).length;
       const flagAfter = assessment?.security.flagAfterEvents ?? 3;
-      attempt.integrityStatus = count >= flagAfter ? "Flagged" : count > 0 ? "Review Required" : "Clean";
+      attempt.integrityStatus =
+        count >= flagAfter ? "Flagged" : count > 0 ? "Review Required" : "Clean";
     }
     persist();
     return delay({ eventCount: d.events.filter((e) => e.attemptId === input.attemptId).length });
